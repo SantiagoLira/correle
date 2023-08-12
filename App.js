@@ -6,6 +6,7 @@ import MapView, { Polyline } from "react-native-maps";
 import axios from "axios";
 
 export default function App() {
+  // son declaras las variables para enviarlas a la api como estados
   const [isRouteStarted, setIsRouteStarted] = useState(false);
   const [steps, setSteps] = useState(0);
   const [location, setLocation] = useState(null);
@@ -19,7 +20,7 @@ export default function App() {
   const [startLongitude, setStartLongitude] = useState(null);
   const [endLongitude, setEndLongitude] = useState(null);
 
-
+  // Habilita el uso de acelerometro durante la ejecucion de la app
   useEffect(() => {
     const subscription = Accelerometer.addListener(({ x, y, z }) => {
       const acceleration = Math.sqrt(x ** 2 + y ** 2 + z ** 2);
@@ -32,6 +33,7 @@ export default function App() {
     };
   }, [isRouteStarted]);
 
+  // Se utiliza para calcula el intervalo de tiempo desde que se inicia el tiempo hasta que se finaliza
   useEffect(() => {
     const interval = setInterval(() => {
       if (isRouteStarted && startTime) {
@@ -46,6 +48,7 @@ export default function App() {
     };
   }, [isRouteStarted, startTime]);
 
+  // se le da formato al tiempo
   const formatTime = (milliseconds) => {
     const totalSeconds = Math.floor(milliseconds / 1000);
     const minutes = Math.floor(totalSeconds / 60);
@@ -53,12 +56,16 @@ export default function App() {
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
   
+  // Se habilita el uso de gps para tener continuamente la ubicacion
   useEffect(() => {
     getLocationAsync();
   }, []);
 
+  // Es la funcion donde se obtiene la ubicacion con el gps
   const getLocationAsync = async () => {
+    // el status es para la peticion de los permisos de usar el gps en el telefono
     const { status } = await Location.requestForegroundPermissionsAsync();
+    // si se le otorgan permisos empieza la obtencion de coordenadas
     if (status === "granted") {
       const location = await Location.watchPositionAsync(
         {
@@ -69,6 +76,7 @@ export default function App() {
           const { latitude, longitude } = newLocation.coords;
           setLocation(newLocation);
           if (isRouteStarted) {
+            // se guardan las coordenadas de lalitude y longitud en un array de coordenadas
             setRouteCoordinates((prevCoordinates) => [
               ...prevCoordinates,
               { latitude, longitude },
@@ -76,10 +84,12 @@ export default function App() {
           }
         }
       );
+      // al obtener las coordenas actuales se guardan en locatio
       setLocation(location);
     }
   };
 
+  // inicializa los valores de los estados al dar clic en el boton de inciar
   const handleStartRoute = () => {
     setIsRouteStarted(true);
     setSteps(0);
@@ -90,6 +100,7 @@ export default function App() {
     setStartLongitude(longitude);
   };
 
+  // obtiene los valores finales para ser enviados a la api
   const handleEndRoute = async () => {
     setIsRouteStarted(false);
     await setEndTime(new Date());
@@ -102,6 +113,7 @@ export default function App() {
     const timeDiff = (endTime - startTime) / 1000;
     const stepRateValue = steps / (timeDiff / 60);
     
+    // variable que tendra todos los valores para ser enviado
     const routeData = {
       date: new Date(),
       steps: steps,
@@ -116,6 +128,7 @@ export default function App() {
     sendRouteDataToApi(routeData);
   };
 
+  // funcion para enviar los valores a la api mediante el request post
   const sendRouteDataToApi = async (routeData) => {
     try {
       const apiUrl = "https://apiapp.fly.dev/addRegistro"; // Reemplaza con la URL de tu API externa
@@ -127,19 +140,27 @@ export default function App() {
   };
 
   return (
+    // contenedor inicial
     <View style={styles.container}>
+      {/* se mostraran los pasos obtenidos por el acelerometro */}
       <Text>Total Steps: {steps}</Text>
+      {/* al generar el primer par de coordenadas se renderizara el mapa con el componente MapView */}
       {location?.coords && (
+        // componente del mapa renderizado con las cooredenadas
         <MapView style={styles.map} initialRegion={{
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
           latitudeDelta: 0.0922,
           longitudeDelta: 0.0421,
         }}>
+          {/* Linea que va marcando la ruta, con linea roja, falta su correccion */}
           <Polyline coordinates={routeCoordinates} strokeWidth={5} strokeColor="red" />
         </MapView>
       )}
+      {/* muestra la diferencia de tiempo tiempo */}
       <Text>Time Elapsed: {formatTime(elapsedTime)}</Text>
+
+      {/* es una condicional en caso de si ya incio ruta o no, mostrara un boton y otro apartir de : */}
       {isRouteStarted ? (
         <TouchableOpacity style={styles.endButton} onPress={handleEndRoute}>
         <Text style={styles.endButtonText}>Finalizar Ruta</Text>
@@ -149,6 +170,7 @@ export default function App() {
           <Text style={styles.startButtonText}>Iniciar Ruta</Text>
         </TouchableOpacity>
       )}
+      {/* muestra el promedio entre los pasos y el tiempo */}
       {stepRate !== null && <Text>Step Rate: {stepRate} steps/min</Text>}
     </View>
   );
